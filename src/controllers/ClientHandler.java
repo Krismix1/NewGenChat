@@ -1,6 +1,7 @@
 package controllers;
 
 import models.Client;
+import models.InvalidProtocolMessageFormatException;
 import models.Server;
 
 import java.io.IOException;
@@ -47,17 +48,33 @@ public class ClientHandler {
             PrintWriter output = new PrintWriter(link.getOutputStream(), true); //Step 2.
 
             String message, response;
-            String chatName = client.getUsername();
+            String chatName = client.getChatName();
 
             message = ProtocolUtility.getInstance().createJoinRequest(chatName, link.getInetAddress().getHostAddress(), link.getPort());
-            output.println("QUIT"); //Step 3.
-            response = input.nextLine(); //Step 3.
-            System.out.println("\nSERVER> " + response);
+            output.println(message); //Step 3.
+            while (true) {
+                if(input.hasNext()) {
+                    response = input.nextLine(); //Step 3.
+                    System.out.println("\nSERVER> " + response);
+                }
+            }
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
         } finally {
             closeConnection(link);
         }
+    }
+
+    public static Client getClientFromJoinMessage(String message) {
+        int startIndex = message.indexOf(" ");
+        int endIndex = message.indexOf(",");
+        String chatName;
+        try {
+            chatName = message.substring(startIndex + 1, endIndex);
+        } catch (IndexOutOfBoundsException e) {
+            throw new InvalidProtocolMessageFormatException("Invalid JOIN request format", e);
+        }
+        return new Client(chatName);
     }
 
 

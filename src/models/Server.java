@@ -16,8 +16,8 @@ import java.util.Scanner;
  * Created by Chris on 21-Sep-17.
  */
 public class Server {
-    public static final int SERVER_PORT = 10_000;
-    public static final String SERVER_IP = "127.0.0.1";
+    public static final int SERVER_PORT = 4567;
+    public static final String SERVER_IP = "172.16.17.151";
     private static final ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
 
     private static ServerSocket serverSocket;
@@ -57,7 +57,7 @@ public class Server {
             if (!protocolUtility.hasProtocolKeyword(message)) {
                 JoinError error = JoinError.UNKNOWN_COMMAND;
                 output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                throw new InvalidProtocolMessage("Invalid message type: " + message);
+                throw new InvalidProtocolMessageException("Invalid message type: " + message);
             }
 
             if (protocolUtility.isQuitRequest(message)) {
@@ -68,25 +68,32 @@ public class Server {
                 return;
             } else {
 
-                String joinMsg = message.substring(0, ClientProtocolMessage.JOIN.getIdentifier().length());
 
-                if (joinMsg.equals(ClientProtocolMessage.JOIN.getIdentifier())) { // check for a JOIN
-                    int startIndex = message.indexOf(" ");
-                    int endIndex = message.indexOf(",");
-                    String chatName = message.substring(startIndex + 1, endIndex);
+                if (protocolUtility.isJoinRequest(message)) { // check for a JOIN
+
+                    Client client = ClientHandler.getClientFromJoinMessage(message);
+                    client.setConnection(link);
+                    String chatName = client.getChatName();
                     System.out.println("Connection with: " + chatName);
 
-                    // TODO: 24-Sep-17 Check chat name format again here
 
-                    if (!chatRoom.canAddClient(chatName)) {
+                    // Check chat name format again here, for cases where the client is not my code
+                    if(!protocolUtility.isValidChatName(chatName)){
+                        JoinError error = JoinError.INVALID_USERNAME;
+                        output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
+                        output.close();
+                        return;
+                    }
+
+                    if (!chatRoom.isAvailableChatName(chatName)) {
                         JoinError error = JoinError.USED_USERNAME;
                         output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
                         output.close();
                         return;
-                    } // At this point the client can be added as a chatter
+                    }
+                    // At this point the client can be added as a chatter
 
-                    // TODO: 24-Sep-17
-//                    chatRoom.addChatter(new Chatter());
+                    chatRoom.addChatter(new Chatter(client.getChatName(), client));
 
                     output.println(ServerProtocolMessage.J_OK.getIdentifier());
                     return;

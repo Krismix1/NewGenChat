@@ -14,7 +14,7 @@ public enum ServerProtocolMessage {
     LIST("LIST");
 
     ServerProtocolMessage(String keyword){
-        if(keyword.length() == ProtocolUtility.keywordLength) {
+        if(keyword.length() == ProtocolUtility.KEYWORDS_LENGTH) {
             identifier = keyword;
         } else throw new InvalidParameterException();
     }

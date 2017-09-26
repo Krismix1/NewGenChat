@@ -3,6 +3,7 @@ package models;
 import controllers.ClientHandler;
 import controllers.ProtocolUtility;
 
+import java.net.Socket;
 import java.util.Scanner;
 
 /**
@@ -15,26 +16,40 @@ public class Client {
         ClientHandler.getInstance().connectClient(client);
     }
 
+    private String chatName;
+    private Socket connection;
+
     public Client() {
         chooseUsername();
     }
 
-    private String username;
+    public Client(String chatName) {
+        // Maybe check the chat name format?
+        this.chatName = chatName;
+    }
 
-    public String getUsername() {
-        return username;
+    public String getChatName() {
+        return chatName;
+    }
+
+    public Socket getConnection() {
+        return connection;
+    }
+
+    public void setConnection(Socket connection) {
+        this.connection = connection;
     }
 
     public void chooseUsername() {
         Scanner console = new Scanner(System.in);
-        System.out.println("Enter your username: ");
-        String username = console.nextLine();
-        while (!ProtocolUtility.getInstance().isValidUsername(username)) {
+        System.out.println("Enter your chat name: ");
+        String chatName = console.nextLine();
+        while (!ProtocolUtility.getInstance().isValidChatName(chatName)) {
             System.out.println("Username format is invalid!");
             System.out.println("Please enter again: ");
-            username = console.nextLine();
+            chatName = console.nextLine();
         }
 //        console.close();
-        this.username = username;
+        this.chatName = chatName;
     }
 }
