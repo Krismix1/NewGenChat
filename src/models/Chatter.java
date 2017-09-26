@@ -34,4 +34,16 @@ public class Chatter {
     public int hashCode() {
         return Objects.hash(chatName);
     }
+
+    public static String getChatNameJoinMessage(String message) {
+        int startIndex = message.indexOf(" ");
+        int endIndex = message.indexOf(",");
+        String chatName;
+        try {
+            chatName = message.substring(startIndex + 1, endIndex);
+        } catch (IndexOutOfBoundsException e) {
+            throw new InvalidProtocolMessageFormatException("Invalid JOIN request format", e);
+        }
+        return chatName;
+    }
 }

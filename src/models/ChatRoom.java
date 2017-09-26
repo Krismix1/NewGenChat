@@ -34,13 +34,14 @@ public class ChatRoom {
     }
 
     public boolean removeChatter(Chatter client) {
-        boolean removed = chattersList.remove(client);
-        if (removed) {
-            notifyAllChatters();
-        } else {
-            throw new RuntimeException("Failed to add chatter");
-        }
-        return removed;
+        throw new UnsupportedOperationException();
+//        boolean removed = chattersList.remove(client);
+//        if (removed) {
+//            notifyAllChatters();
+//        } else {
+//            throw new RuntimeException("Failed to add chatter");
+//        }
+//        return removed;
     }
 
     public boolean isAvailableChatName(String chatName) {

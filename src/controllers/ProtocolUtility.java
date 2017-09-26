@@ -6,6 +6,7 @@ import models.Server;
 import models.ServerProtocolMessage;
 
 import java.util.Collection;
+import java.util.Scanner;
 
 /**
  * Created by Chris on 21-Sep-17.
@@ -88,7 +89,23 @@ public class ProtocolUtility {
         return chatters.
                 stream()
                 .map(Chatter::getChatName)
-                .reduce(ServerProtocolMessage.DATA.getIdentifier() + " ", (a, b) -> a + " " + b);
+                .reduce(ServerProtocolMessage.LIST.getIdentifier() + " ", (a, b) -> a + " " + b);
     }
 
+    public String chooseUsername() {
+        Scanner console = new Scanner(System.in);
+        System.out.println("Enter your chat name: ");
+        String chatName = console.nextLine();
+        while (!ProtocolUtility.getInstance().isValidChatName(chatName)) {
+            System.out.println("Username format is invalid!");
+            System.out.println("Please enter again: ");
+            chatName = console.nextLine();
+        }
+        return chatName;
+//        console.close();
+    }
+
+    public boolean isJOK(String message) {
+        return message.equals(ServerProtocolMessage.J_OK.getIdentifier());
+    }
 }

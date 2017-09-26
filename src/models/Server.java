@@ -1,11 +1,9 @@
 package models;
 
-import controllers.ClientHandler;
 import controllers.ProtocolUtility;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.LinkedList;
@@ -16,8 +14,8 @@ import java.util.Scanner;
  * Created by Chris on 21-Sep-17.
  */
 public class Server {
-    public static final int SERVER_PORT = 4567;
-    public static final String SERVER_IP = "172.16.17.151";
+    public static final int SERVER_PORT = 10_000;
+    public static final String SERVER_IP = "127.0.0.1";
     private static final ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
 
     private static ServerSocket serverSocket;
@@ -42,11 +40,12 @@ public class Server {
 
     private static void handleClient() {
         Socket link = null;
+        Client newClient = null;
         try {
             link = serverSocket.accept(); // Somebody connects to the server
             Scanner input = new Scanner(link.getInputStream());
             PrintWriter output = new PrintWriter(link.getOutputStream(), true);
-
+            newClient = new Client(link);
 
             String message = input.nextLine(); // message should be a JOIN message or a QUIT or a IMAV
             ChatRoom chatRoom = chatRooms.get(0);
@@ -62,19 +61,16 @@ public class Server {
 
             if (protocolUtility.isQuitRequest(message)) {
                 // Disconnect the chatter and client from the server
-                ClientHandler.closeConnection(link);
+                newClient.closeConnection();
                 // TODO: 24-Sep-17
 //                chatRoom.removeChatter(new Chatter());
                 return;
             } else {
 
-
                 if (protocolUtility.isJoinRequest(message)) { // check for a JOIN
 
-                    Client client = ClientHandler.getClientFromJoinMessage(message);
-                    client.setConnection(link);
-                    String chatName = client.getChatName();
-                    System.out.println("Connection with: " + chatName);
+                    String chatName = Chatter.getChatNameJoinMessage(message);
+                    System.out.println("Connection from: " + newClient.getConnection().getLocalAddress().getHostAddress());
 
 
                     // Check chat name format again here, for cases where the client is not my code
@@ -93,7 +89,7 @@ public class Server {
                     }
                     // At this point the client can be added as a chatter
 
-                    chatRoom.addChatter(new Chatter(client.getChatName(), client));
+                    chatRoom.addChatter(new Chatter(chatName, newClient));
 
                     output.println(ServerProtocolMessage.J_OK.getIdentifier());
                     return;
@@ -120,32 +116,8 @@ public class Server {
 //            }
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
-        } finally {
-            ClientHandler.closeConnection(link);
-        }
-    }
-
-    private void openServer(final int portOfServer) throws IOException {
-        // Create 2 threads, to receive and send information to the clients
-        ServerSocket server = new ServerSocket(portOfServer); // should this be outside of the loop?
-        while (true) {
-            try {
-                Socket socket = server.accept();
-
-                int clientPort = socket.getPort();
-                InetAddress clientAddress = socket.getInetAddress();
-
-                // Make a logger file here :)
-                System.out.println("Client connection from: " + clientAddress.getHostAddress() + ":" + clientPort);
-
-                String msgToSend = "добро пожаловать";
-                PrintWriter out = new PrintWriter(socket.getOutputStream());
-                out.write(msgToSend);
-                out.flush();
-                out.close();
-                socket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            if(newClient != null){
+//                newClient.closeConnection();
             }
         }
     }

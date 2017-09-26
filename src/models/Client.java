@@ -3,8 +3,8 @@ package models;
 import controllers.ClientHandler;
 import controllers.ProtocolUtility;
 
+import java.io.IOException;
 import java.net.Socket;
-import java.util.Scanner;
 
 /**
  * Created by Chris on 21-Sep-17.
@@ -12,44 +12,30 @@ import java.util.Scanner;
 public class Client {
 
     public static void main(String[] args) {
-        Client client = new Client();
-        ClientHandler.getInstance().connectClient(client);
+        Client client = ClientHandler.getInstance().connectToServer();
+        String chatName = ProtocolUtility.getInstance().chooseUsername();
+        Chatter chatter = new Chatter(chatName, client);
+        ClientHandler.getInstance().accessServer(chatter);
     }
 
-    private String chatName;
+
     private Socket connection;
 
-    public Client() {
-        chooseUsername();
-    }
-
-    public Client(String chatName) {
-        // Maybe check the chat name format?
-        this.chatName = chatName;
-    }
-
-    public String getChatName() {
-        return chatName;
+    public Client(Socket connection) {
+        this.connection = connection;
     }
 
     public Socket getConnection() {
         return connection;
     }
 
-    public void setConnection(Socket connection) {
-        this.connection = connection;
-    }
-
-    public void chooseUsername() {
-        Scanner console = new Scanner(System.in);
-        System.out.println("Enter your chat name: ");
-        String chatName = console.nextLine();
-        while (!ProtocolUtility.getInstance().isValidChatName(chatName)) {
-            System.out.println("Username format is invalid!");
-            System.out.println("Please enter again: ");
-            chatName = console.nextLine();
+    public void closeConnection() {
+        try {
+            System.out.println("\n* Closing connection " + connection.toString());
+            connection.close(); //Step 4.
+        } catch (IOException ioEx) {
+            System.out.println("Unable to disconnect!");
+            System.exit(1);
         }
-//        console.close();
-        this.chatName = chatName;
     }
 }

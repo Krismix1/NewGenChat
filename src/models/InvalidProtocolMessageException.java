@@ -5,7 +5,6 @@ package models;
  */
 public class InvalidProtocolMessageException extends RuntimeException {
     public InvalidProtocolMessageException() {
-        super();
     }
 
     public InvalidProtocolMessageException(String message) {

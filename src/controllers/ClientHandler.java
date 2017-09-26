@@ -1,8 +1,9 @@
 package controllers;
 
+import models.Chatter;
 import models.Client;
-import models.InvalidProtocolMessageFormatException;
 import models.Server;
+import models.ServerProtocolMessage;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -28,63 +29,52 @@ public class ClientHandler {
     }
 
     private static InetAddress host;
-    private final Server server = new Server();
+//    private final Server server = new Server();
 
-    public void connectClient(Client client) {
+    public Client connectToServer() {
         try {
             host = InetAddress.getByName(Server.SERVER_IP);
+            Socket link = new Socket(host, Server.SERVER_PORT);
+            return new Client(link);
         } catch (UnknownHostException uhEx) {
             System.out.println("Host ID not found!");
             System.exit(1);
+        } catch (IOException ioEx) {
+            System.out.println("Couldn't establish connection");
+            System.exit(1);
         }
-        accessServer(client);
+        return null;
     }
 
-    private void accessServer(Client client) {
-        Socket link = null; //Step 1.
+    public void accessServer(Chatter chatter) {
+        Socket link = chatter.getClient().getConnection(); //Step 1.
         try {
-            link = new Socket(host, Server.SERVER_PORT); //Step 1.
             Scanner input = new Scanner(link.getInputStream()); //Step 2.
             PrintWriter output = new PrintWriter(link.getOutputStream(), true); //Step 2.
 
             String message, response;
-            String chatName = client.getChatName();
-
-            message = ProtocolUtility.getInstance().createJoinRequest(chatName, link.getInetAddress().getHostAddress(), link.getPort());
+            String chatName = chatter.getChatName();
+            ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
+            message = protocolUtility.createJoinRequest(chatName, link.getInetAddress().getHostAddress(), link.getPort());
             output.println(message); //Step 3.
-            while (true) {
-                if(input.hasNext()) {
-                    response = input.nextLine(); //Step 3.
-                    System.out.println("\nSERVER> " + response);
+//            while (true) {
+            if (input.hasNext()) {
+                response = input.nextLine(); //Step 3.
+                System.out.println("\nSERVER> " + response);
+            }
+            if (input.hasNext()) {
+                response = input.nextLine(); //Step 3.
+                if (protocolUtility.isJOK(response)) {
+                    System.out.println("You can start chatting now!");
+                    // Create new thread for sending messages
+                    // Create new thread for receiving messages
                 }
             }
+//            }
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
         } finally {
-            closeConnection(link);
-        }
-    }
-
-    public static Client getClientFromJoinMessage(String message) {
-        int startIndex = message.indexOf(" ");
-        int endIndex = message.indexOf(",");
-        String chatName;
-        try {
-            chatName = message.substring(startIndex + 1, endIndex);
-        } catch (IndexOutOfBoundsException e) {
-            throw new InvalidProtocolMessageFormatException("Invalid JOIN request format", e);
-        }
-        return new Client(chatName);
-    }
-
-
-    public static void closeConnection(Socket link) {
-        try {
-            System.out.println("\n* Closing connection with " + link.toString());
-            link.close(); //Step 4.
-        } catch (IOException ioEx) {
-            System.out.println("Unable to disconnect!");
-            System.exit(1);
+//            chatter.getClient().closeConnection();
         }
     }
 }
