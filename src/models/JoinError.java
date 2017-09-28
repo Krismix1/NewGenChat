@@ -24,4 +24,13 @@ public enum JoinError {
     public int errorCode() {
         return errorCode;
     }
+
+    public JoinError valueOf(int errorCode) {
+        for (JoinError er : values()) {
+            if (er.errorCode == errorCode) {
+                return er;
+            }
+        }
+        return null;
+    }
 }

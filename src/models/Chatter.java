@@ -1,5 +1,6 @@
 package models;
 
+import util.InvalidProtocolMessageFormatException;
 import java.util.Objects;
 
 /**

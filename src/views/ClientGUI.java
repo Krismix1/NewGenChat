@@ -5,11 +5,11 @@ package views;
  */
 public final class ClientGUI {
 
-    private static ClientGUI instance;
+    private static volatile ClientGUI instance;
 
     private ClientGUI() {
         if (instance != null) {
-            throw new IllegalStateException("Singleton created more than 1 time");
+            throw new IllegalStateException("Singleton " + ClientGUI.class.getName() + " created more than 1 time");
         }
     }
 

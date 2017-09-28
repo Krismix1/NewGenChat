@@ -1,6 +1,7 @@
 package models;
 
 import controllers.ProtocolUtility;
+import util.UnknownProtocolMessageException;
 import views.ConsoleColors;
 
 import java.io.IOException;
@@ -29,6 +30,16 @@ public class Server {
             System.out.println("Opening port…\n");
             try {
                 serverSocket = new ServerSocket(SERVER_PORT); //Step 1.
+
+                System.out.print(ConsoleColors.YELLOW);
+                System.out.println("********************");
+                System.out.println("Server open on:");
+                System.out.print(ConsoleColors.GREEN);
+                System.out.println("SERVER_IP = " + SERVER_IP);
+                System.out.println("SERVER_PORT = " + SERVER_PORT);
+                System.out.print(ConsoleColors.YELLOW);
+                System.out.print("********************");
+                System.out.println(ConsoleColors.RESET);
             } catch (IOException ioEx) {
                 System.out.println("Unable to attach to port!");
                 System.exit(1);
@@ -48,8 +59,7 @@ public class Server {
             Scanner input = new Scanner(link.getInputStream());
             PrintWriter output = new PrintWriter(link.getOutputStream(), true);
             newClient = new Client(link);
-
-            String message = input.nextLine(); // message should be a JOIN message or a QUIT or a IMAV
+            String message = input.nextLine(); // message should be a JOIN message
             ChatRoom chatRoom = chatRooms.get(0);
 
             // FIXME: 24-Sep-17 Make a static factory method for creating protocol messages, enum will take you nowhere
@@ -59,23 +69,16 @@ public class Server {
                 throw new UnknownProtocolMessageException("Unknown protocol message: " + message);
             }
 
-            if (protocolUtility.isQuitRequest(message)) {
-                // Disconnect the chatter and client from the server
-                Chatter chatter = connections.get(link);
-                chatRoom.removeChatter(chatter);
-                newClient.closeConnection();
-                return;
-            }
-
             if (protocolUtility.isJoinRequest(message)) { // check for a JOIN
 
                 String chatName = Chatter.getChatNameFromJoinMessage(message);
                 System.out.print(ConsoleColors.BOLD.getAnsiColor() + ConsoleColors.PURPLE);
                 System.out.print("Connection from: " + chatName);
-                System.out.println("with IP: " + newClient.getConnection().getLocalAddress().getHostAddress() + ConsoleColors.RESET);
+                System.out.println(" with IP: " + newClient.getConnection().getLocalAddress().getHostAddress() + ConsoleColors.RESET);
 
                 // Check chat name format again here, for cases where the client is not my code
                 if (!protocolUtility.isValidChatName(chatName)) {
+                    System.out.println("User " + chatName + " was disconnected for invalid chat name");
                     JoinError error = JoinError.INVALID_USERNAME;
                     output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
                     output.close();
@@ -83,6 +86,7 @@ public class Server {
                 }
 
                 if (!chatRoom.isAvailableChatName(chatName)) {
+                    System.out.println("User " + ConsoleColors.BOLD + chatName + ConsoleColors.RESET + " was disconnected for not available chat name");
                     JoinError error = JoinError.USED_USERNAME;
                     output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
                     output.close();
@@ -99,7 +103,7 @@ public class Server {
             } else {
                 JoinError error = JoinError.INVALID_REQUEST_FORMAT;
                 output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                System.out.println("Debug: " + message);
+                System.out.println("Server.handleClient.debug: " + message);
                 output.println("Connection closed");
                 output.close();
 

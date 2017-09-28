@@ -32,8 +32,10 @@ public class Client {
 
     public void closeConnection() {
         try {
-            System.out.println("\n* Closing connection " + connection.toString());
-            connection.close(); //Step 4.
+            System.out.print(ConsoleColors.BOLD.getAnsiColor() + ConsoleColors.PURPLE + "\n* Closing connection with " + connection.getInetAddress().getHostAddress());
+            System.out.println(ConsoleColors.RESET);
+            connection.close();
+            System.out.println(ConsoleColors.GREEN + "You left the chat!" + ConsoleColors.RESET);
         } catch (IOException ioEx) {
             System.out.println("Unable to disconnect!");
             System.exit(1);

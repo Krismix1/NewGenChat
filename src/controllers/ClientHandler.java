@@ -4,7 +4,6 @@ import models.Chatter;
 import models.Client;
 import models.Server;
 import views.ClientGUI;
-import views.ConsoleColors;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -17,9 +16,12 @@ import java.util.Scanner;
  * Created by Chris on 22-Sep-17.
  */
 public class ClientHandler {
-    private static ClientHandler instance;
+    private static volatile ClientHandler instance;
 
     private ClientHandler() {
+        if (instance != null) {
+            throw new IllegalStateException("Singleton " + ClientHandler.class.getName() + " created more than 1 time");
+        }
     }
 
     public static synchronized ClientHandler getInstance() {
@@ -55,11 +57,20 @@ public class ClientHandler {
             final Scanner input = new Scanner(link.getInputStream()); //Step 2.
             final PrintWriter output = new PrintWriter(link.getOutputStream(), true); //Step 2.
 
-            String message;
+            String joinRequest;
             ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
-            message = protocolUtility.createJoinRequest(chatter.getChatName(), link.getInetAddress().getHostAddress(), link.getPort());
-            output.println(message);
+            joinRequest = protocolUtility.createJoinRequest(chatter.getChatName()+"", link.getInetAddress().getHostAddress(), link.getPort());
+            output.println(joinRequest);
 
+            // TODO: 28-Sep-17 Will all servers send first a J_OK message?
+            if (input.hasNextLine()) {
+                String s = input.nextLine();
+                if (!protocolUtility.isJOK(s)) {
+                    System.out.println("ClientHandler.accessServer.debug: " + s);
+                    ClientGUI.getInstance().displayErrorMessage(s);
+                    return;
+                }
+            }
             // Save all the messages from the server, do this because i don't know in each order should the LIST and J_OK be sent
 //            List<String> buffer = new LinkedList<>();
 //            while (input.hasNextLine()) {
@@ -87,10 +98,10 @@ public class ClientHandler {
 
             Thread inputThread = new Thread(() -> {
                 final String thisClientName = chatter.getChatName();
-                while (true) {
+                while (!link.isClosed()) {
                     if (input.hasNextLine()) {
                         String newMessage = input.nextLine();
-                        if (newMessage.startsWith("DATA ")) {
+                        if (protocolUtility.isDATA(newMessage)) {
                             if (newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1).startsWith(thisClientName)) {
                                 continue;
                             }
@@ -109,17 +120,19 @@ public class ClientHandler {
                 do {
                     System.out.println("Enter message: ");
                     newMessage = keyboard.nextLine();
-                    if (newMessage.length() > 250) {
-                        clientGUI.displayErrorMessage("Message can't be longer than " + 250 + " characters");
+                    if (newMessage.length() > ProtocolUtility.MAX_MESSAGE_LENGTH) {
+                        clientGUI.displayErrorMessage("Message can't be longer than " + ProtocolUtility.MAX_MESSAGE_LENGTH + " characters");
                         continue;
                     }
                     if (newMessage.isEmpty()) {
                         clientGUI.displayErrorMessage("Empty message!");
                         continue;
                     }
-                    clientGUI.displayMessage("You:\n" + newMessage);
-                    output.println("DATA " + chatName + ": " + newMessage); //Step 3.
+//                    clientGUI.displayMessage("You:\n\t" + newMessage);
+                    output.println(protocolUtility.createDataMessage(chatName, newMessage));
                 } while (!newMessage.equals("***CLOSE***"));
+                output.println(protocolUtility.createQuitMessage());
+                chatter.getClient().closeConnection();
             });
 
             inputThread.start();

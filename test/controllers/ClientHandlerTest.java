@@ -1,14 +1,9 @@
 package controllers;
 
-import models.Client;
-import models.InvalidProtocolMessageFormatException;
 import org.junit.jupiter.api.Test;
 
-import static models.Server.SERVER_IP;
-import static models.Server.SERVER_PORT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Created by Chris on 25-Sep-17.
