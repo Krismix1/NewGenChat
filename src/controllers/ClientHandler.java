@@ -3,7 +3,8 @@ package controllers;
 import models.Chatter;
 import models.Client;
 import models.Server;
-import models.ServerProtocolMessage;
+import views.ClientGUI;
+import views.ConsoleColors;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -49,28 +50,78 @@ public class ClientHandler {
     public void accessServer(Chatter chatter) {
         Socket link = chatter.getClient().getConnection(); //Step 1.
         try {
-            Scanner input = new Scanner(link.getInputStream()); //Step 2.
-            PrintWriter output = new PrintWriter(link.getOutputStream(), true); //Step 2.
+            final Scanner input = new Scanner(link.getInputStream()); //Step 2.
+            final PrintWriter output = new PrintWriter(link.getOutputStream(), true); //Step 2.
 
-            String message, response;
-            String chatName = chatter.getChatName();
+            String message;
             ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
-            message = protocolUtility.createJoinRequest(chatName, link.getInetAddress().getHostAddress(), link.getPort());
+            message = protocolUtility.createJoinRequest(chatter.getChatName(), link.getInetAddress().getHostAddress(), link.getPort());
             output.println(message); //Step 3.
-//            while (true) {
-            if (input.hasNext()) {
-                response = input.nextLine(); //Step 3.
-                System.out.println("\nSERVER> " + response);
-            }
-            if (input.hasNext()) {
-                response = input.nextLine(); //Step 3.
-                if (protocolUtility.isJOK(response)) {
-                    System.out.println("You can start chatting now!");
-                    // Create new thread for sending messages
-                    // Create new thread for receiving messages
-                }
-            }
+
+            // Save all the messages from the server, do this because i don't know in each order should the LIST and J_OK be sent
+//            List<String> buffer = new LinkedList<>();
+//            while (input.hasNextLine()) {
+//                buffer.add(input.nextLine());
 //            }
+//            List<String> toDisplay = new LinkedList<>();
+//            Iterator<String> bufferIterator = buffer.iterator();
+//            while (bufferIterator.hasNext()) {
+//                String smth = bufferIterator.next();
+//                if (protocolUtility.isJER(smth)) {
+//                    System.out.println(smth); // TODO: 26-Sep-17 Delegate this to ClientGUI class
+//                    chatter.getClient().closeConnection();
+//                    return;
+//                }
+//                if (protocolUtility.isJOK(smth)) {
+//                    System.out.println("You can start chatting now!"); // TODO: 26-Sep-17 Delegate this to ClientGUI class
+//                    // Create new thread for sending messages
+//                    // Create new thread for receiving messages
+//                    // Then also display the buffered messages
+//                } else { // can be DATA or LIST
+//                    toDisplay.add(smth);
+//                }
+//            }
+//            System.out.println(toDisplay);
+
+            Thread inputThread = new Thread(() -> {
+                final String thisClientName = chatter.getChatName();
+                while (true) {
+                    if (input.hasNextLine()) {
+                        String newMessage = input.nextLine();
+                        if (newMessage.startsWith("DATA ")) {
+                            if (newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1).startsWith(thisClientName)) {
+                                continue;
+                            }
+                            ClientGUI.getInstance().displayMessage(newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1));
+                        } else {
+                            ClientGUI.getInstance().displayCommand(newMessage);
+                        }
+                    }
+                }
+            });
+
+            Thread outputThread = new Thread(() -> {
+                Scanner keyboard = new Scanner(System.in);
+                String newMessage;
+                final String chatName = chatter.getChatName();
+                do {
+                    System.out.println("Enter message: ");
+                    newMessage = keyboard.nextLine();
+                    if (newMessage.length() > 250) {
+                        ClientGUI.getInstance().displayErrorMessage("Message can't be longer than " + 250 + " characters");
+                        continue;
+                    }
+                    if (newMessage.isEmpty()) {
+                        ClientGUI.getInstance().displayErrorMessage("Empty message!");
+                        continue;
+                    }
+                    ClientGUI.getInstance().displayMessage("You said:\n" + newMessage);
+                    output.println("DATA " + chatName + ": " + newMessage); //Step 3.
+                } while (!newMessage.equals("***CLOSE***"));
+            });
+
+            inputThread.start();
+            outputThread.start();
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
         } finally {

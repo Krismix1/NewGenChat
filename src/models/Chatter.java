@@ -35,7 +35,7 @@ public class Chatter {
         return Objects.hash(chatName);
     }
 
-    public static String getChatNameJoinMessage(String message) {
+    public static String getChatNameFromJoinMessage(String message) {
         int startIndex = message.indexOf(" ");
         int endIndex = message.indexOf(",");
         String chatName;
@@ -46,4 +46,5 @@ public class Chatter {
         }
         return chatName;
     }
+
 }

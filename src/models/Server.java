@@ -14,6 +14,8 @@ import java.util.Scanner;
  * Created by Chris on 21-Sep-17.
  */
 public class Server {
+//    public static final int SERVER_PORT = 4545;
+//    public static final String SERVER_IP = "172.16.17.151";
     public static final int SERVER_PORT = 10_000;
     public static final String SERVER_IP = "127.0.0.1";
     private static final ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
@@ -69,7 +71,7 @@ public class Server {
 
                 if (protocolUtility.isJoinRequest(message)) { // check for a JOIN
 
-                    String chatName = Chatter.getChatNameJoinMessage(message);
+                    String chatName = Chatter.getChatNameFromJoinMessage(message);
                     System.out.println("Connection from: " + newClient.getConnection().getLocalAddress().getHostAddress());
 
 

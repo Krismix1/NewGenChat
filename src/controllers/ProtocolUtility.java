@@ -27,8 +27,13 @@ public class ProtocolUtility {
 
     public static final int KEYWORDS_LENGTH = 4;
 
+    // Change this to return ClientProtocolMessage/ServerProtocolMessage
+    private String getProtocolKeyword(String message) {
+        return message.substring(0, KEYWORDS_LENGTH);
+    }
+
     public boolean hasProtocolKeyword(String message) {
-        String keyword = message.substring(0, KEYWORDS_LENGTH);
+        String keyword = getProtocolKeyword(message);
         for (ClientProtocolMessage msg : ClientProtocolMessage.values()) {
             if (msg.getIdentifier().equals(keyword)) {
                 return true;
@@ -107,5 +112,9 @@ public class ProtocolUtility {
 
     public boolean isJOK(String message) {
         return message.equals(ServerProtocolMessage.J_OK.getIdentifier());
+    }
+
+    public boolean isJER(String message) {
+        return getProtocolKeyword(message).equals(ServerProtocolMessage.J_ER.getIdentifier());
     }
 }
