@@ -22,9 +22,9 @@ public final class ClientGUI {
 
     // Make it a singleton
     public synchronized void displayErrorMessage(String message) {
-        System.out.println(ConsoleColors.RED);
+        System.out.print(ConsoleColors.RED);
 
-        System.out.println(message);
+        System.out.print(message);
 
         System.out.println(ConsoleColors.RESET);
     }
@@ -34,9 +34,9 @@ public final class ClientGUI {
     }
 
     public synchronized void displayCommand(String message) {
-        System.out.println(ConsoleColors.PURPLE);
+        System.out.print(ConsoleColors.PURPLE);
 
-        System.out.println(message);
+        System.out.print(message);
 
         System.out.println(ConsoleColors.RESET);
     }

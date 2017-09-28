@@ -31,6 +31,8 @@ public class ClientHandler {
 
     private static InetAddress host;
 //    private final Server server = new Server();
+    private static final ClientGUI clientGUI = ClientGUI.getInstance();
+
 
     public Client connectToServer() {
         try {
@@ -56,7 +58,7 @@ public class ClientHandler {
             String message;
             ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
             message = protocolUtility.createJoinRequest(chatter.getChatName(), link.getInetAddress().getHostAddress(), link.getPort());
-            output.println(message); //Step 3.
+            output.println(message);
 
             // Save all the messages from the server, do this because i don't know in each order should the LIST and J_OK be sent
 //            List<String> buffer = new LinkedList<>();
@@ -92,9 +94,9 @@ public class ClientHandler {
                             if (newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1).startsWith(thisClientName)) {
                                 continue;
                             }
-                            ClientGUI.getInstance().displayMessage(newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1));
+                            clientGUI.displayMessage(newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1));
                         } else {
-                            ClientGUI.getInstance().displayCommand(newMessage);
+                            clientGUI.displayCommand(newMessage);
                         }
                     }
                 }
@@ -108,14 +110,14 @@ public class ClientHandler {
                     System.out.println("Enter message: ");
                     newMessage = keyboard.nextLine();
                     if (newMessage.length() > 250) {
-                        ClientGUI.getInstance().displayErrorMessage("Message can't be longer than " + 250 + " characters");
+                        clientGUI.displayErrorMessage("Message can't be longer than " + 250 + " characters");
                         continue;
                     }
                     if (newMessage.isEmpty()) {
-                        ClientGUI.getInstance().displayErrorMessage("Empty message!");
+                        clientGUI.displayErrorMessage("Empty message!");
                         continue;
                     }
-                    ClientGUI.getInstance().displayMessage("You said:\n" + newMessage);
+                    clientGUI.displayMessage("You:\n" + newMessage);
                     output.println("DATA " + chatName + ": " + newMessage); //Step 3.
                 } while (!newMessage.equals("***CLOSE***"));
             });

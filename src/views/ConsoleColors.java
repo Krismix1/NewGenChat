@@ -33,6 +33,8 @@ public enum ConsoleColors {
         return ansiColor;
     }
 
+
+    // Taken from http://cesarloachamin.github.io/2015/03/31/System-out-print-colors-and-unicode-characters/
 //    public class PrintColorWriter extends PrintWriter{
 //
 //        private static final String ANSI_RESET = "\u001B[0m";

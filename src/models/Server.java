@@ -1,28 +1,28 @@
 package models;
 
 import controllers.ProtocolUtility;
+import views.ConsoleColors;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * Created by Chris on 21-Sep-17.
  */
 public class Server {
-//    public static final int SERVER_PORT = 4545;
+    //    public static final int SERVER_PORT = 4545;
 //    public static final String SERVER_IP = "172.16.17.151";
     public static final int SERVER_PORT = 10_000;
     public static final String SERVER_IP = "127.0.0.1";
+
     private static final ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
-
     private static ServerSocket serverSocket;
-
     private static List<ChatRoom> chatRooms = new LinkedList<>();
+
+    private static volatile Map<Socket, Chatter> connections = new HashMap<>();
 
     public static void main(String[] args) {
         {
@@ -41,7 +41,7 @@ public class Server {
     }
 
     private static void handleClient() {
-        Socket link = null;
+        Socket link;
         Client newClient = null;
         try {
             link = serverSocket.accept(); // Somebody connects to the server
@@ -52,59 +52,60 @@ public class Server {
             String message = input.nextLine(); // message should be a JOIN message or a QUIT or a IMAV
             ChatRoom chatRoom = chatRooms.get(0);
 
-            System.out.println("Debug: " + message);
-
             // FIXME: 24-Sep-17 Make a static factory method for creating protocol messages, enum will take you nowhere
             if (!protocolUtility.hasProtocolKeyword(message)) {
                 JoinError error = JoinError.UNKNOWN_COMMAND;
                 output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                throw new InvalidProtocolMessageException("Invalid message type: " + message);
+                throw new UnknownProtocolMessageException("Unknown protocol message: " + message);
             }
 
             if (protocolUtility.isQuitRequest(message)) {
                 // Disconnect the chatter and client from the server
+                Chatter chatter = connections.get(link);
+                chatRoom.removeChatter(chatter);
                 newClient.closeConnection();
-                // TODO: 24-Sep-17
-//                chatRoom.removeChatter(new Chatter());
                 return;
-            } else {
+            }
 
-                if (protocolUtility.isJoinRequest(message)) { // check for a JOIN
+            if (protocolUtility.isJoinRequest(message)) { // check for a JOIN
 
-                    String chatName = Chatter.getChatNameFromJoinMessage(message);
-                    System.out.println("Connection from: " + newClient.getConnection().getLocalAddress().getHostAddress());
+                String chatName = Chatter.getChatNameFromJoinMessage(message);
+                System.out.print(ConsoleColors.BOLD.getAnsiColor() + ConsoleColors.PURPLE);
+                System.out.print("Connection from: " + chatName);
+                System.out.println("with IP: " + newClient.getConnection().getLocalAddress().getHostAddress() + ConsoleColors.RESET);
 
-
-                    // Check chat name format again here, for cases where the client is not my code
-                    if(!protocolUtility.isValidChatName(chatName)){
-                        JoinError error = JoinError.INVALID_USERNAME;
-                        output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                        output.close();
-                        return;
-                    }
-
-                    if (!chatRoom.isAvailableChatName(chatName)) {
-                        JoinError error = JoinError.USED_USERNAME;
-                        output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                        output.close();
-                        return;
-                    }
-                    // At this point the client can be added as a chatter
-
-                    chatRoom.addChatter(new Chatter(chatName, newClient));
-
-                    output.println(ServerProtocolMessage.J_OK.getIdentifier());
-                    return;
-                } else {
-                    JoinError error = JoinError.INVALID_REQUEST_FORMAT;
+                // Check chat name format again here, for cases where the client is not my code
+                if (!protocolUtility.isValidChatName(chatName)) {
+                    JoinError error = JoinError.INVALID_USERNAME;
                     output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                    System.out.println("Debug: " + message);
                     output.close();
-                    output.println("Connection closed");
-
                     return;
                 }
+
+                if (!chatRoom.isAvailableChatName(chatName)) {
+                    JoinError error = JoinError.USED_USERNAME;
+                    output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
+                    output.close();
+                    return;
+                }
+                // At this point the client can be added as a chatter
+                output.println(ServerProtocolMessage.J_OK.getIdentifier());
+
+                Chatter chatter = new Chatter(chatName, newClient);
+                chatRoom.addChatter(chatter);
+                connections.put(link, chatter);
+
+                return;
+            } else {
+                JoinError error = JoinError.INVALID_REQUEST_FORMAT;
+                output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
+                System.out.println("Debug: " + message);
+                output.println("Connection closed");
+                output.close();
+
+                return;
             }
+
 
             // What about the IMAV message?
 //            throw new UnsupportedOperationException("Should never reach here");
@@ -118,7 +119,7 @@ public class Server {
 //            }
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
-            if(newClient != null){
+            if (newClient != null) {
 //                newClient.closeConnection();
             }
         }

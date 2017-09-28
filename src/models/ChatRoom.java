@@ -13,8 +13,7 @@ import java.util.Set;
 public class ChatRoom {
     private static long ID = 0;
 
-    private Set<Chatter> chattersList = new HashSet<>(); // TODO: 24-Sep-17 Make this a Set object
-    // For this, override the equal and hashCode methods in Chatter class
+    private Set<Chatter> chattersList = new HashSet<>();
     private long id;
 
     public ChatRoom(/*Chatter c1, Chatter c2*/) {
