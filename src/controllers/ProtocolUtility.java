@@ -8,6 +8,8 @@ import util.InvalidProtocolMessageFormatException;
 
 import java.util.Collection;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Created by Chris on 21-Sep-17.
@@ -20,6 +22,7 @@ public class ProtocolUtility {
         if (instance != null) {
             throw new IllegalStateException("Singleton " + ProtocolUtility.class.getName() + " created more than 1 time");
         }
+        pattern = Pattern.compile(CHAT_NAME_PATTERN);
     }
 
     public static synchronized ProtocolUtility getInstance() {
@@ -31,6 +34,14 @@ public class ProtocolUtility {
 
     public static final int KEYWORDS_LENGTH = 4;
     public static final int MAX_MESSAGE_LENGTH = 250;
+    /**
+     * The interval of seconds at which the clients should send the IMAV message
+     */
+    public static final int CHATTER_ALIVE_MESSAGE_INTERVAL = 60;
+
+    private static final String CHAT_NAME_PATTERN = "[a-zA-Z0-9\\-_]{1,12}";
+    private final Pattern pattern;
+    private Matcher matcher;
 
     // Change this to return ClientProtocolMessage/ServerProtocolMessage
     private String getProtocolKeyword(String message) {
@@ -55,11 +66,11 @@ public class ProtocolUtility {
     }
 
     public boolean isValidChatName(String chatName) {
-        final int usernameLength = chatName.length();
-        if (usernameLength <= 0 || usernameLength > 12) {
-            return false;
+        if (chatName == null) {
+            throw new NullPointerException();
         }
-        return chatName.matches("[a-zA-Z0-9\\-_]+");
+        matcher = pattern.matcher(chatName);
+        return matcher.matches();
     }
 
     public String createChattersListMessage(Collection<Chatter> chatters) {
@@ -140,5 +151,9 @@ public class ProtocolUtility {
             throw new InvalidProtocolMessageFormatException("Message contains more than " + MAX_MESSAGE_LENGTH + " characters");
         }
         return String.format("%s %s: %s", ClientProtocolMessage.DATA.getIdentifier(), chatName, message);
+    }
+
+    public String createImavMessage() {
+        return ClientProtocolMessage.IMAV.getIdentifier();
     }
 }

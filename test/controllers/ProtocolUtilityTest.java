@@ -14,34 +14,41 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ProtocolUtilityTest {
     @Test
+    void isSingleton() {
+        ProtocolUtility protocol1 = ProtocolUtility.getInstance();
+        ProtocolUtility protocol = ProtocolUtility.getInstance();
+        assertEquals(protocol, protocol1);
+    }
+
+    @Test
+    void throwsNullPointer() {
+        assertThrows(NullPointerException.class, () -> ProtocolUtility.getInstance().isValidChatName(null));
+    }
+
+    @Test
     void isValidUsername() {
         ProtocolUtility protocol = ProtocolUtility.getInstance();
-        ProtocolUtility protocol1 = ProtocolUtility.getInstance();
-        assertEquals(protocol, protocol1);
 
-//        assertFalse(protocol.isValidChatName(null));
-        assertFalse(protocol.isValidChatName(""));
-        assertFalse(protocol.isValidChatName("0123456789abc"));
-        assertFalse(protocol.isValidChatName("0123456789abcd"));
-        assertFalse(protocol.isValidChatName("A."));
-        assertFalse(protocol.isValidChatName("2."));
-        assertFalse(protocol.isValidChatName("a."));
-        assertFalse(protocol.isValidChatName("a?"));
-        assertFalse(protocol.isValidChatName("a "));
-        assertFalse(protocol.isValidChatName("4 "));
 
-        assertTrue(protocol.isValidChatName("A"));
-        assertTrue(protocol.isValidChatName("a"));
-        assertTrue(protocol.isValidChatName("1"));
-        assertTrue(protocol.isValidChatName("A2"));
-        assertTrue(protocol.isValidChatName("a9"));
-        assertTrue(protocol.isValidChatName("0A"));
-        assertTrue(protocol.isValidChatName("5a"));
-        assertTrue(protocol.isValidChatName("-5a"));
-        assertTrue(protocol.isValidChatName("_5a"));
-        assertTrue(protocol.isValidChatName("_-5a"));
-        assertTrue(protocol.isValidChatName("_-5aA"));
-        assertTrue(protocol.isValidChatName("_5a-A"));
+        String[] validChatNames = {"A", "a", "1", "A2", "a9", "0A", "5a", "-5a", "_5a", "_-5a", "_-5aA", "_5a-A",
+                "mkyong34", "mkyong_2002", "mkyong-2002", "mk3-4_yong"};
+
+        for (String validChatName : validChatNames) {
+            assertTrue(protocol.isValidChatName(validChatName));
+        }
+    }
+
+    @Test
+    void isInvalidUsername() {
+        ProtocolUtility protocol = ProtocolUtility.getInstance();
+
+        String[] invalidChatNames = {"",
+                "mk@yong", "mkyong_2002\n",
+                "mkyong123456789_-", "0123456789abc", "0123456789abcd", "A.", "2.", "a.", "a?", "a ", "4 "};
+
+        for (String invalidChatName : invalidChatNames) {
+            assertFalse(protocol.isValidChatName(invalidChatName));
+        }
     }
 
     @Test
@@ -56,6 +63,6 @@ class ProtocolUtilityTest {
         assertFalse(protocolUtility.isJoinRequest("JOIN cristi, 127.0.0.2:" + SERVER_PORT));
         assertFalse(protocolUtility.isJoinRequest("JOINT cristi, 127.0.0.2:" + SERVER_PORT));
         assertFalse(protocolUtility.isJoinRequest("JOINT cristi. 127.0.0.2:" + SERVER_PORT));
-        assertFalse(protocolUtility.isJoinRequest("JOIN cristi, " + SERVER_IP + ":" + SERVER_PORT+"r"));
+        assertFalse(protocolUtility.isJoinRequest("JOIN cristi, " + SERVER_IP + ":" + SERVER_PORT + "r"));
     }
 }

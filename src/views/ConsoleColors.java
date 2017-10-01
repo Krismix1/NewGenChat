@@ -6,6 +6,7 @@ package views;
 
 // private static final String CHECK_MARK = "\u2713";
 // private static final String ERROR_MARK = "\u2717";
+// https://en.wikipedia.org/wiki/ANSI_escape_code
 public enum ConsoleColors {
     BLACK("\u001B[30m"),
     RED("\u001B[31m"),

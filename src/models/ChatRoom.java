@@ -1,9 +1,11 @@
 package models;
 
 import controllers.ProtocolUtility;
+import views.ClientGUI;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
@@ -47,7 +49,9 @@ public class ChatRoom {
                             return;
                         }
                         if (protocolUtility.isIMAV(message)) {
-                            throw new UnsupportedOperationException("IMAV not implemented");
+//                            throw new UnsupportedOperationException("IMAV not implemented");
+                            ClientGUI.getInstance().displayCommand(message);
+                            System.out.println("From " + chatter.getChatName() + " at " + LocalTime.now().toString());
                         }
                         if (protocolUtility.isDATA(message)) {
                             sendMessageToAll(message);

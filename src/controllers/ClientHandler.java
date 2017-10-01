@@ -11,6 +11,8 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Created by Chris on 22-Sep-17.
@@ -32,8 +34,10 @@ public class ClientHandler {
     }
 
     private static InetAddress host;
-//    private final Server server = new Server();
+    //    private final Server server = new Server();
     private static final ClientGUI clientGUI = ClientGUI.getInstance();
+
+    private final Timer imavTimer = new Timer();
 
 
     public Client connectToServer() {
@@ -59,7 +63,7 @@ public class ClientHandler {
 
             String joinRequest;
             ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
-            joinRequest = protocolUtility.createJoinRequest(chatter.getChatName()+"", link.getInetAddress().getHostAddress(), link.getPort());
+            joinRequest = protocolUtility.createJoinRequest(chatter.getChatName() + "", link.getInetAddress().getHostAddress(), link.getPort());
             output.println(joinRequest);
 
             // TODO: 28-Sep-17 Will all servers send first a J_OK message?
@@ -137,6 +141,14 @@ public class ClientHandler {
 
             inputThread.start();
             outputThread.start();
+
+            final int delay = ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL / 2 * 1000;
+            imavTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    output.println(protocolUtility.createImavMessage());
+                }
+            }, delay, delay);
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
         } finally {
