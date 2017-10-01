@@ -2,10 +2,13 @@ package models;
 
 import controllers.ClientHandler;
 import controllers.ProtocolUtility;
+import views.ClientGUI;
 import views.ConsoleColors;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Scanner;
 
 /**
  * Created by Chris on 21-Sep-17.
@@ -21,23 +24,35 @@ public class Client {
 
 
     private Socket connection;
+    private PrintWriter connectionOutput;
+    private Scanner connectionInput;
 
-    public Client(Socket connection) {
+    public Client(Socket connection) throws IOException {
         this.connection = connection;
+        connectionInput = new Scanner(connection.getInputStream());
+        connectionOutput = new PrintWriter(connection.getOutputStream(), true);
     }
 
     public Socket getConnection() {
         return connection;
     }
 
+    public PrintWriter getConnectionOutput() {
+        return connectionOutput;
+    }
+
+    public Scanner getConnectionInput() {
+        return connectionInput;
+    }
+
     public void closeConnection() {
         try {
-            System.out.print(ConsoleColors.BOLD.getAnsiColor() + ConsoleColors.PURPLE + "\n* Closing connection with " + connection.getInetAddress().getHostAddress());
-            System.out.println(ConsoleColors.RESET);
+            connectionInput.close();
+            connectionOutput.close();
             connection.close();
-            System.out.println(ConsoleColors.GREEN + "You left the chat!" + ConsoleColors.RESET);
         } catch (IOException ioEx) {
-            System.out.println("Unable to disconnect!");
+            ioEx.printStackTrace();
+            ClientGUI.getInstance().displayMessage("Unable to disconnect!");
             System.exit(1);
         }
     }

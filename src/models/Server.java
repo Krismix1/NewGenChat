@@ -23,7 +23,7 @@ public class Server {
     private static ServerSocket serverSocket;
     private static List<ChatRoom> chatRooms = new LinkedList<>();
 
-    private static volatile Map<Socket, Chatter> connections = new HashMap<>();
+    private static volatile Map<String, Chatter> connections = new HashMap<>();
 
     public static void main(String[] args) {
         {
@@ -76,6 +76,9 @@ public class Server {
                 System.out.print("Connection from: " + chatName);
                 System.out.println(" with IP: " + newClient.getConnection().getLocalAddress().getHostAddress() + ConsoleColors.RESET);
 
+                // TODO: 01-Oct-17 Put all of this in the ChatRoom.addChatter()?
+                // Think about creating new Chatter() so that not many objects are created
+
                 // Check chat name format again here, for cases where the client is not my code
                 if (!protocolUtility.isValidChatName(chatName)) {
                     System.out.println("User " + chatName + " was disconnected for invalid chat name");
@@ -97,7 +100,7 @@ public class Server {
 
                 Chatter chatter = new Chatter(chatName, newClient);
                 chatRoom.addChatter(chatter);
-                connections.put(link, chatter);
+                connections.put(chatName, chatter);
 
                 return;
             } else {
@@ -109,18 +112,6 @@ public class Server {
 
                 return;
             }
-
-
-            // What about the IMAV message?
-//            throw new UnsupportedOperationException("Should never reach here");
-
-//            while (!message.equals(ClientProtocolMessage.QUIT.getIdentifier())) {
-//                output.println(ServerProtocolMessage.J_OK.getIdentifier()); //Step 4.
-//                if (input.hasNext()) {
-//                    message = input.nextLine();
-//                }
-//                System.out.println(message);
-//            }
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
             if (newClient != null) {

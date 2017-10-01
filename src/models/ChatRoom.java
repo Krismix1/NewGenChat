@@ -1,14 +1,15 @@
 package models;
 
 import controllers.ProtocolUtility;
+import util.IMAVClientDisconnecter;
 import views.ClientGUI;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashSet;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by Chris on 21-Sep-17.
@@ -30,28 +31,29 @@ public class ChatRoom {
         boolean added = chattersList.add(chatter);
         if (added) {
             notifyAllChatters();
+            IMAVClientDisconnecter disconnecter = new IMAVClientDisconnecter(chatter, this);
 
             // This thread will listen to DATA,QUIT,IMAV message from the chatter
             Thread listener = new Thread(() -> {
-                Scanner input = null;
-                try {
-                    input = new Scanner(chatter.getClient().getConnection().getInputStream());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                while (true) {
+                Scanner input = chatter.getClient().getConnectionInput();
+
+                disconnecter.startTimer();
+                while (!chatter.getClient().getConnection().isClosed()) {
                     if (input.hasNextLine()) {
                         String message = input.nextLine();
                         if (protocolUtility.isQuitRequest(message)) {
                             // Disconnect the chatter and client from the server
+                            disconnecter.cancelTimer();
                             removeChatter(chatter);
-                            chatter.getClient().closeConnection();
                             return;
                         }
                         if (protocolUtility.isIMAV(message)) {
-//                            throw new UnsupportedOperationException("IMAV not implemented");
                             ClientGUI.getInstance().displayCommand(message);
                             System.out.println("From " + chatter.getChatName() + " at " + LocalTime.now().toString());
+
+                            disconnecter.cancelTimer();
+                            disconnecter.startTimer();
+                            chatter.updateLastImav();
                         }
                         if (protocolUtility.isDATA(message)) {
                             sendMessageToAll(message);
@@ -69,6 +71,7 @@ public class ChatRoom {
     public boolean removeChatter(Chatter chatter) {
         boolean removed = chattersList.remove(chatter);
         if (removed) {
+            chatter.getClient().closeConnection();
             notifyAllChatters();
         } else {
             throw new RuntimeException("Failed to remove chatter");
@@ -84,27 +87,11 @@ public class ChatRoom {
 
     private synchronized void sendMessageToAll(String message) {
         chattersList
-                .forEach(chatter -> {
-                    try {
-                        PrintWriter output = new PrintWriter(chatter.getClient().getConnection().getOutputStream(), true);
-                        output.println(message);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
+                .forEach(chatter -> chatter.getClient().getConnectionOutput().println(message));
     }
 
     private void notifyAllChatters() {
         String message = ProtocolUtility.getInstance().createChattersListMessage(chattersList);
-        System.out.println(message);
-        try {
-            for (Chatter chatter : chattersList) {
-                PrintWriter output = new PrintWriter(chatter.getClient().getConnection().getOutputStream());
-                output.println(message);
-                output.flush();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        chattersList.forEach(chatter -> chatter.getClient().getConnectionOutput().println(message));
     }
 }

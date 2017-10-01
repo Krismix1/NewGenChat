@@ -4,6 +4,7 @@ import models.Chatter;
 import models.Client;
 import models.Server;
 import views.ClientGUI;
+import views.ConsoleColors;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -57,102 +58,83 @@ public class ClientHandler {
 
     public void accessServer(Chatter chatter) {
         Socket link = chatter.getClient().getConnection(); //Step 1.
-        try {
-            final Scanner input = new Scanner(link.getInputStream()); //Step 2.
-            final PrintWriter output = new PrintWriter(link.getOutputStream(), true); //Step 2.
+        final Scanner input = chatter.getClient().getConnectionInput(); //Step 2.
+        final PrintWriter output = chatter.getClient().getConnectionOutput(); //Step 2.
 
-            String joinRequest;
-            ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
-            joinRequest = protocolUtility.createJoinRequest(chatter.getChatName() + "", link.getInetAddress().getHostAddress(), link.getPort());
-            output.println(joinRequest);
+        String joinRequest;
+        ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
+        joinRequest = protocolUtility.createJoinRequest(chatter.getChatName(), link.getInetAddress().getHostAddress(), link.getPort());
+        output.println(joinRequest);
 
-            // TODO: 28-Sep-17 Will all servers send first a J_OK message?
-            if (input.hasNextLine()) {
-                String s = input.nextLine();
-                if (!protocolUtility.isJOK(s)) {
-                    System.out.println("ClientHandler.accessServer.debug: " + s);
-                    ClientGUI.getInstance().displayErrorMessage(s);
-                    return;
+        // TODO: 28-Sep-17 Will all servers send first a J_OK message?
+        if (input.hasNextLine()) {
+            String s = input.nextLine();
+            if (!protocolUtility.isJOK(s)) {
+                System.out.println("ClientHandler.accessServer.debug: " + s);
+                ClientGUI.getInstance().displayErrorMessage(s);
+                return;
+            }
+        }
+
+        Thread inputThread = new Thread(() -> {
+            final String thisClientName = chatter.getChatName();
+            while (!link.isClosed()) {
+                if (input.hasNextLine()) {
+                    String newMessage = input.nextLine();
+                    if (protocolUtility.isDATA(newMessage)) {
+                        if (newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1).startsWith(thisClientName)) {
+                            continue;
+                        }
+                        clientGUI.displayMessage(newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1));
+                    } else if (!protocolUtility.isQuitRequest(newMessage)) { // TODO: 01-Oct-17 ONLY CLIENT SHOULD SEND QUIT MESSAGE!!!
+                        clientGUI.displayCommand(newMessage);
+                    } else {
+                        clientGUI.displayErrorMessage("You have been disconnected for being idle!");
+                        chatter.getClient().closeConnection();
+                        imavTimer.cancel();
+                        System.exit(0);
+                    }
                 }
             }
-            // Save all the messages from the server, do this because i don't know in each order should the LIST and J_OK be sent
-//            List<String> buffer = new LinkedList<>();
-//            while (input.hasNextLine()) {
-//                buffer.add(input.nextLine());
-//            }
-//            List<String> toDisplay = new LinkedList<>();
-//            Iterator<String> bufferIterator = buffer.iterator();
-//            while (bufferIterator.hasNext()) {
-//                String smth = bufferIterator.next();
-//                if (protocolUtility.isJER(smth)) {
-//                    System.out.println(smth); // TODO: 26-Sep-17 Delegate this to ClientGUI class
-//                    chatter.getClient().closeConnection();
-//                    return;
-//                }
-//                if (protocolUtility.isJOK(smth)) {
-//                    System.out.println("You can start chatting now!"); // TODO: 26-Sep-17 Delegate this to ClientGUI class
-//                    // Create new thread for sending messages
-//                    // Create new thread for receiving messages
-//                    // Then also display the buffered messages
-//                } else { // can be DATA or LIST
-//                    toDisplay.add(smth);
-//                }
-//            }
-//            System.out.println(toDisplay);
+        });
 
-            Thread inputThread = new Thread(() -> {
-                final String thisClientName = chatter.getChatName();
-                while (!link.isClosed()) {
-                    if (input.hasNextLine()) {
-                        String newMessage = input.nextLine();
-                        if (protocolUtility.isDATA(newMessage)) {
-                            if (newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1).startsWith(thisClientName)) {
-                                continue;
-                            }
-                            clientGUI.displayMessage(newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1));
-                        } else {
-                            clientGUI.displayCommand(newMessage);
-                        }
-                    }
+        Thread outputThread = new Thread(() -> {
+            Scanner keyboard = new Scanner(System.in);
+            String newMessage;
+            final String chatName = chatter.getChatName();
+            do {
+                System.out.println("Enter message: ");
+                newMessage = keyboard.nextLine();
+                if (newMessage.length() > ProtocolUtility.MAX_MESSAGE_LENGTH) {
+                    clientGUI.displayErrorMessage("Message can't be longer than " + ProtocolUtility.MAX_MESSAGE_LENGTH + " characters");
+                    continue;
                 }
-            });
-
-            Thread outputThread = new Thread(() -> {
-                Scanner keyboard = new Scanner(System.in);
-                String newMessage;
-                final String chatName = chatter.getChatName();
-                do {
-                    System.out.println("Enter message: ");
-                    newMessage = keyboard.nextLine();
-                    if (newMessage.length() > ProtocolUtility.MAX_MESSAGE_LENGTH) {
-                        clientGUI.displayErrorMessage("Message can't be longer than " + ProtocolUtility.MAX_MESSAGE_LENGTH + " characters");
-                        continue;
-                    }
-                    if (newMessage.isEmpty()) {
-                        clientGUI.displayErrorMessage("Empty message!");
-                        continue;
-                    }
+                if (newMessage.isEmpty()) {
+                    clientGUI.displayErrorMessage("Empty message!");
+                    continue;
+                }
 //                    clientGUI.displayMessage("You:\n\t" + newMessage);
-                    output.println(protocolUtility.createDataMessage(chatName, newMessage));
-                } while (!newMessage.equals("***CLOSE***"));
-                output.println(protocolUtility.createQuitMessage());
-                chatter.getClient().closeConnection();
-            });
+                output.println(protocolUtility.createDataMessage(chatName, newMessage));
+            } while (!newMessage.equals("***CLOSE***") && !link.isClosed());
+            imavTimer.cancel();
+            output.println(protocolUtility.createQuitMessage());
 
-            inputThread.start();
-            outputThread.start();
+            clientGUI.displayCommand("\n* Closing connection with " + link.getInetAddress().getHostAddress());
+            System.out.println(ConsoleColors.GREEN + "You left the chat!" + ConsoleColors.RESET);
 
-            final int delay = ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL / 2 * 1000;
-            imavTimer.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    output.println(protocolUtility.createImavMessage());
-                }
-            }, delay, delay);
-        } catch (IOException ioEx) {
-            ioEx.printStackTrace();
-        } finally {
-//            chatter.getClient().closeConnection();
-        }
+
+            chatter.getClient().closeConnection();
+        });
+
+        inputThread.start();
+        outputThread.start();
+
+        final int delay = ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL / 2 * 1000;
+        imavTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                output.println(protocolUtility.createImavMessage());
+            }
+        }, delay, delay);
     }
 }
