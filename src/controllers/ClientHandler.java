@@ -100,8 +100,7 @@ public class ClientHandler {
                     }
                 }
             }
-//            imavTimer.cancel();
-            clientGUI.displayErrorMessage("You have been disconnected for being idle for more than " + ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + " seconds");
+//            clientGUI.displayErrorMessage("You have been disconnected for being idle for more than " + ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + " seconds");
         });
 
         Thread outputThread = new Thread(() -> {
@@ -122,9 +121,11 @@ public class ClientHandler {
                     clientGUI.displayErrorMessage("Empty message!");
                     continue;
                 }
+                if (newMessage.equals("***CLOSE***")) {
+                    break;
+                }
                 output.println(protocolUtility.createDataMessage(chatName, newMessage));
-                System.out.println(output.checkError());
-            } while (!newMessage.equals("***CLOSE***") && !chatter.getClient().getConnection().isClosed());
+            } while (!chatter.getClient().getConnection().isClosed());
 
             output.println(protocolUtility.createQuitMessage());
             chatter.getClient().closeConnection();
