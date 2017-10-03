@@ -16,14 +16,14 @@ import java.util.*;
 public class Server {
     //    public static final int SERVER_PORT = 4545;
 //    public static final String SERVER_IP = "172.16.17.151";
+//    public static final int SERVER_PORT = 4444;
+//    public static final String SERVER_IP = "172.16.21.117";
     public static final int SERVER_PORT = 10_000;
     public static final String SERVER_IP = "127.0.0.1";
 
     private static final ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
     private static ServerSocket serverSocket;
     private static List<ChatRoom> chatRooms = new LinkedList<>();
-
-    private static volatile Map<String, Chatter> connections = new HashMap<>();
 
     public static void main(String[] args) {
         {
@@ -53,12 +53,13 @@ public class Server {
 
     private static void handleClient() {
         Socket link;
-        Client newClient = null;
         try {
             link = serverSocket.accept(); // Somebody connects to the server
-            Scanner input = new Scanner(link.getInputStream());
-            PrintWriter output = new PrintWriter(link.getOutputStream(), true);
-            newClient = new Client(link);
+            Client newClient = new Client(link);
+            final Scanner input = newClient.getConnectionInput();
+            final PrintWriter output = newClient.getConnectionOutput();
+
+            // TODO: 02-Oct-17 reading of the JOIN message should perhaps go in the thread already
             String message = input.nextLine(); // message should be a JOIN message
             ChatRoom chatRoom = chatRooms.get(0);
 
@@ -66,6 +67,7 @@ public class Server {
             if (!protocolUtility.hasProtocolKeyword(message)) {
                 JoinError error = JoinError.UNKNOWN_COMMAND;
                 output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
+                newClient.closeConnection();
                 throw new UnknownProtocolMessageException("Unknown protocol message: " + message);
             }
 
@@ -84,7 +86,7 @@ public class Server {
                     System.out.println("User " + chatName + " was disconnected for invalid chat name");
                     JoinError error = JoinError.INVALID_USERNAME;
                     output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                    output.close();
+                    newClient.closeConnection();
                     return;
                 }
 
@@ -92,15 +94,14 @@ public class Server {
                     System.out.println("User " + ConsoleColors.BOLD + chatName + ConsoleColors.RESET + " was disconnected for not available chat name");
                     JoinError error = JoinError.USED_USERNAME;
                     output.println(protocolUtility.createErrorMessage(error.errorCode(), error.errorMessage()));
-                    output.close();
+                    newClient.closeConnection();
                     return;
                 }
+
                 // At this point the client can be added as a chatter
                 output.println(ServerProtocolMessage.J_OK.getIdentifier());
-
                 Chatter chatter = new Chatter(chatName, newClient);
                 chatRoom.addChatter(chatter);
-                connections.put(chatName, chatter);
 
                 return;
             } else {
@@ -114,9 +115,6 @@ public class Server {
             }
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
-            if (newClient != null) {
-//                newClient.closeConnection();
-            }
         }
     }
 }

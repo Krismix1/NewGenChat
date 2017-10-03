@@ -2,7 +2,6 @@ package models;
 
 import util.InvalidProtocolMessageFormatException;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
@@ -10,7 +9,7 @@ import java.util.Objects;
  * Created by Chris on 21-Sep-17.
  */
 public class Chatter {
-    private Client client;
+    private volatile Client client;
     private String chatName;
     private LocalDateTime lastImavMessage = LocalDateTime.now();
 

@@ -1,11 +1,8 @@
 package models;
 
 import controllers.ProtocolUtility;
-import util.IMAVClientDisconnecter;
 import views.ClientGUI;
 
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -31,28 +28,38 @@ public class ChatRoom {
         boolean added = chattersList.add(chatter);
         if (added) {
             notifyAllChatters();
-            IMAVClientDisconnecter disconnecter = new IMAVClientDisconnecter(chatter, this);
+
+
+            Timer timer = new Timer();
+            TimerTask disconnectUserTask = new TimerTask() {
+                @Override
+                public void run() {
+                    Duration duration = Duration.between(chatter.getLastImavMessage(), LocalDateTime.now());
+                    if (duration.getSeconds() >= ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) {
+                        timer.cancel();
+                        removeChatter(chatter);
+                        ClientGUI.getInstance().displayErrorMessage(chatter.getChatName() + " was disconnected for being idle. ");
+                    }
+                }
+            };
+
 
             // This thread will listen to DATA,QUIT,IMAV message from the chatter
             Thread listener = new Thread(() -> {
                 Scanner input = chatter.getClient().getConnectionInput();
 
-                disconnecter.startTimer();
                 while (!chatter.getClient().getConnection().isClosed()) {
                     if (input.hasNextLine()) {
                         String message = input.nextLine();
                         if (protocolUtility.isQuitRequest(message)) {
                             // Disconnect the chatter and client from the server
-                            disconnecter.cancelTimer();
+                            timer.cancel();
                             removeChatter(chatter);
                             return;
                         }
                         if (protocolUtility.isIMAV(message)) {
                             ClientGUI.getInstance().displayCommand(message);
                             System.out.println("From " + chatter.getChatName() + " at " + LocalTime.now().toString());
-
-                            disconnecter.cancelTimer();
-                            disconnecter.startTimer();
                             chatter.updateLastImav();
                         }
                         if (protocolUtility.isDATA(message)) {
@@ -62,11 +69,13 @@ public class ChatRoom {
                 }
             });
             listener.start();
+            timer.scheduleAtFixedRate(disconnectUserTask, (ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) * 1000, (ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) * 1000);
         } else {
             throw new RuntimeException("Failed to add chatter");
         }
         return added;
     }
+
 
     public boolean removeChatter(Chatter chatter) {
         boolean removed = chattersList.remove(chatter);
@@ -90,8 +99,8 @@ public class ChatRoom {
                 .forEach(chatter -> chatter.getClient().getConnectionOutput().println(message));
     }
 
-    private void notifyAllChatters() {
+    private synchronized void notifyAllChatters() {
         String message = ProtocolUtility.getInstance().createChattersListMessage(chattersList);
-        chattersList.forEach(chatter -> chatter.getClient().getConnectionOutput().println(message));
+        sendMessageToAll(message);
     }
 }

@@ -3,12 +3,13 @@ package models;
 import controllers.ClientHandler;
 import controllers.ProtocolUtility;
 import views.ClientGUI;
-import views.ConsoleColors;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 
 /**
  * Created by Chris on 21-Sep-17.
@@ -23,9 +24,11 @@ public class Client {
     }
 
 
-    private Socket connection;
-    private PrintWriter connectionOutput;
-    private Scanner connectionInput;
+    private volatile Socket connection;
+    private volatile PrintWriter connectionOutput;
+    private volatile Scanner connectionInput;
+    private final Timer imavTimer = new Timer();
+    private volatile boolean timerStarted;
 
     public Client(Socket connection) throws IOException {
         this.connection = connection;
@@ -33,27 +36,40 @@ public class Client {
         connectionOutput = new PrintWriter(connection.getOutputStream(), true);
     }
 
-    public Socket getConnection() {
+    public synchronized Socket getConnection() {
         return connection;
     }
 
-    public PrintWriter getConnectionOutput() {
+    public synchronized PrintWriter getConnectionOutput() {
         return connectionOutput;
     }
 
-    public Scanner getConnectionInput() {
+    public synchronized Scanner getConnectionInput() {
         return connectionInput;
     }
 
-    public void closeConnection() {
+    public synchronized void closeConnection() {
         try {
-            connectionInput.close();
-            connectionOutput.close();
             connection.close();
+            imavTimer.cancel();
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
             ClientGUI.getInstance().displayMessage("Unable to disconnect!");
             System.exit(1);
         }
+    }
+
+    public void startImavTimer() {
+        if (timerStarted) {
+            throw new IllegalStateException("Timer was already started");
+        }
+        timerStarted = true;
+        final int delay = ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL / 2 * 1000;
+        imavTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                connectionOutput.println(ProtocolUtility.getInstance().createImavMessage());
+            }
+        }, delay, delay);
     }
 }

@@ -35,11 +35,8 @@ public class ClientHandler {
     }
 
     private static InetAddress host;
-    //    private final Server server = new Server();
     private static final ClientGUI clientGUI = ClientGUI.getInstance();
-
-    private final Timer imavTimer = new Timer();
-
+    private static final ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
 
     public Client connectToServer() {
         try {
@@ -47,9 +44,11 @@ public class ClientHandler {
             Socket link = new Socket(host, Server.SERVER_PORT);
             return new Client(link);
         } catch (UnknownHostException uhEx) {
+            uhEx.printStackTrace();
             System.out.println("Host ID not found!");
             System.exit(1);
         } catch (IOException ioEx) {
+            ioEx.printStackTrace();
             System.out.println("Couldn't establish connection");
             System.exit(1);
         }
@@ -62,7 +61,7 @@ public class ClientHandler {
         final PrintWriter output = chatter.getClient().getConnectionOutput(); //Step 2.
 
         String joinRequest;
-        ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
+        ProtocolUtility protocolUtility = ClientHandler.protocolUtility;
         joinRequest = protocolUtility.createJoinRequest(chatter.getChatName(), link.getInetAddress().getHostAddress(), link.getPort());
         output.println(joinRequest);
 
@@ -72,38 +71,48 @@ public class ClientHandler {
             if (!protocolUtility.isJOK(s)) {
                 System.out.println("ClientHandler.accessServer.debug: " + s);
                 ClientGUI.getInstance().displayErrorMessage(s);
+                chatter.getClient().closeConnection();
                 return;
             }
         }
 
+        // At this point, the client is eligible to start chatting
+        enableChatting(chatter);
+    }
+
+    private void enableChatting(Chatter chatter) {
+//        final Socket link = chatter.getClient().getConnection();
+        final Scanner input = chatter.getClient().getConnectionInput();
+        final PrintWriter output = chatter.getClient().getConnectionOutput();
+
         Thread inputThread = new Thread(() -> {
             final String thisClientName = chatter.getChatName();
-            while (!link.isClosed()) {
-                if (input.hasNextLine()) {
+            while (!chatter.getClient().getConnection().isClosed()) {
+                if (input.hasNextLine()) { // the client received a message
                     String newMessage = input.nextLine();
                     if (protocolUtility.isDATA(newMessage)) {
                         if (newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1).startsWith(thisClientName)) {
-                            continue;
+                            continue; // don't display messages that the client sends to himself
                         }
                         clientGUI.displayMessage(newMessage.substring(ProtocolUtility.KEYWORDS_LENGTH + 1));
-                    } else if (!protocolUtility.isQuitRequest(newMessage)) { // TODO: 01-Oct-17 ONLY CLIENT SHOULD SEND QUIT MESSAGE!!!
-                        clientGUI.displayCommand(newMessage);
                     } else {
-                        clientGUI.displayErrorMessage("You have been disconnected for being idle!");
-                        chatter.getClient().closeConnection();
-                        imavTimer.cancel();
-                        System.exit(0);
+                        clientGUI.displayCommand(newMessage);
                     }
                 }
             }
+//            imavTimer.cancel();
+            clientGUI.displayErrorMessage("You have been disconnected for being idle for more than " + ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + " seconds");
         });
 
         Thread outputThread = new Thread(() -> {
             Scanner keyboard = new Scanner(System.in);
-            String newMessage;
+            String newMessage = "";
             final String chatName = chatter.getChatName();
             do {
                 System.out.println("Enter message: ");
+                if (!keyboard.hasNextLine()) {
+                    continue;
+                }
                 newMessage = keyboard.nextLine();
                 if (newMessage.length() > ProtocolUtility.MAX_MESSAGE_LENGTH) {
                     clientGUI.displayErrorMessage("Message can't be longer than " + ProtocolUtility.MAX_MESSAGE_LENGTH + " characters");
@@ -113,28 +122,19 @@ public class ClientHandler {
                     clientGUI.displayErrorMessage("Empty message!");
                     continue;
                 }
-//                    clientGUI.displayMessage("You:\n\t" + newMessage);
                 output.println(protocolUtility.createDataMessage(chatName, newMessage));
-            } while (!newMessage.equals("***CLOSE***") && !link.isClosed());
-            imavTimer.cancel();
+                System.out.println(output.checkError());
+            } while (!newMessage.equals("***CLOSE***") && !chatter.getClient().getConnection().isClosed());
+
             output.println(protocolUtility.createQuitMessage());
-
-            clientGUI.displayCommand("\n* Closing connection with " + link.getInetAddress().getHostAddress());
-            System.out.println(ConsoleColors.GREEN + "You left the chat!" + ConsoleColors.RESET);
-
-
             chatter.getClient().closeConnection();
+
+            clientGUI.displayCommand("\n* Closing connection with " + chatter.getClient().getConnection().getInetAddress().getHostAddress());
+            System.out.println(ConsoleColors.GREEN + "You left the chat!" + ConsoleColors.RESET);
         });
 
         inputThread.start();
         outputThread.start();
-
-        final int delay = ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL / 2 * 1000;
-        imavTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                output.println(protocolUtility.createImavMessage());
-            }
-        }, delay, delay);
+        chatter.getClient().startImavTimer();
     }
 }
