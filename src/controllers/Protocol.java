@@ -1,36 +1,18 @@
 package controllers;
 
 import models.Chatter;
-import models.ClientProtocolMessage;
-import models.Server;
-import models.ServerProtocolMessage;
+import util.ClientProtocolMessage;
 import util.InvalidProtocolMessageFormatException;
+import util.ServerProtocolMessage;
 
 import java.util.Collection;
 import java.util.Scanner;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Created by Chris on 21-Sep-17.
  */
-public class ProtocolUtility {
-
-    private static volatile ProtocolUtility instance;
-
-    private ProtocolUtility() {
-        if (instance != null) {
-            throw new IllegalStateException("Singleton " + ProtocolUtility.class.getName() + " created more than 1 time");
-        }
-        pattern = Pattern.compile(CHAT_NAME_PATTERN);
-    }
-
-    public static synchronized ProtocolUtility getInstance() {
-        if (instance == null) {
-            instance = new ProtocolUtility();
-        }
-        return instance;
-    }
+public class Protocol {
 
     public static final int KEYWORDS_LENGTH = 4;
     public static final int MAX_MESSAGE_LENGTH = 250;
@@ -40,15 +22,14 @@ public class ProtocolUtility {
     public static final int CHATTER_ALIVE_MESSAGE_INTERVAL = 60;
 
     private static final String CHAT_NAME_PATTERN = "[a-zA-Z0-9\\-_]{1,12}";
-    private final Pattern pattern;
-    private Matcher matcher;
+    private static final Pattern pattern = Pattern.compile(CHAT_NAME_PATTERN);
 
     // Change this to return ClientProtocolMessage/ServerProtocolMessage
-    private String getProtocolKeyword(String message) {
+    private static String getProtocolKeyword(String message) {
         return message.substring(0, KEYWORDS_LENGTH);
     }
 
-    public boolean hasProtocolKeyword(String message) {
+    public static boolean hasProtocolKeyword(String message) {
         String keyword = getProtocolKeyword(message);
         for (ClientProtocolMessage msg : ClientProtocolMessage.values()) {
             if (msg.getIdentifier().equals(keyword)) {
@@ -65,48 +46,37 @@ public class ProtocolUtility {
         return false;
     }
 
-    public boolean isValidChatName(String chatName) {
+    public static boolean isValidChatName(String chatName) {
         if (chatName == null) {
             throw new NullPointerException();
         }
-        matcher = pattern.matcher(chatName);
-        return matcher.matches();
+        return pattern.matcher(chatName).matches();
     }
 
-    public String createChattersListMessage(Collection<Chatter> chatters) {
+    public static String createChattersListMessage(Collection<Chatter> chatters) {
         return chatters.
                 stream()
                 .map(Chatter::getChatName)
-                .reduce(ServerProtocolMessage.LIST.getIdentifier() + " ", (a, b) -> a + " " + b);
+                .reduce(ServerProtocolMessage.LIST.getIdentifier(), (a, b) -> a + " " + b);
     }
 
-    public String chooseUsername() {
+    public static String chooseUsername() {
         Scanner console = new Scanner(System.in);
         System.out.println("Enter your chat name: ");
         String chatName = console.nextLine();
-        while (!ProtocolUtility.getInstance().isValidChatName(chatName)) {
+        while (!isValidChatName(chatName)) {
             System.out.println("Username format is invalid!");
             System.out.println("Please enter again: ");
             chatName = console.nextLine();
         }
         return chatName;
-//        console.close();
     }
 
-    public boolean isQuitRequest(String message) {
+    public static boolean isQuitRequest(String message) {
         return message.equals(ClientProtocolMessage.QUIT.getIdentifier());
     }
 
-    public boolean isJoinRequest(String message) {
-//        final String joinIdentifier = ClientProtocolMessage.JOIN.getIdentifier();
-//
-//        String joinMsg = message.substring(0, joinIdentifier.length());
-//        if (!joinMsg.equals(joinIdentifier)) {
-//            return false;
-//        }
-//        int startIndex = message.indexOf(" ");
-//        String chatName = message.substring(startIndex + 1, endIndex);
-
+    public static boolean isJoinRequest(String message) {
         if (!message.startsWith(ClientProtocolMessage.JOIN.getIdentifier() + " ")) {
             return false;
         }
@@ -118,42 +88,46 @@ public class ProtocolUtility {
         return message.substring(endIndex + 2).equals(Server.SERVER_IP + ":" + Server.SERVER_PORT);
     }
 
-    public boolean isJOK(String message) {
+    public static boolean isJOK(String message) {
         return message.equals(ServerProtocolMessage.J_OK.getIdentifier());
     }
 
-    public boolean isJER(String message) {
+    public static boolean isJER(String message) {
         return getProtocolKeyword(message).equals(ServerProtocolMessage.J_ER.getIdentifier());
     }
 
-    public boolean isIMAV(String message) {
+    public static boolean isIMAV(String message) {
         return message.equals(ClientProtocolMessage.IMAV.getIdentifier());
     }
 
-    public boolean isDATA(String message) {
+    public static boolean isDATA(String message) {
         return message.startsWith(ClientProtocolMessage.DATA.getIdentifier() + " ");
     }
 
-    public String createJoinRequest(String chatName, String serverAddress, int port) {
+    public static boolean isLIST(String message) {
+        return message.startsWith(ServerProtocolMessage.LIST.getIdentifier() + " ");
+    }
+
+    public static String createJoinRequest(String chatName, String serverAddress, int port) {
         return String.format("%s %s, %s:%d", ClientProtocolMessage.JOIN.getIdentifier(), chatName, serverAddress, port);
     }
 
-    public String createErrorMessage(int errorCode, String errorMessage) {
+    public static String createErrorMessage(int errorCode, String errorMessage) {
         return String.format("%s %d: %s", ServerProtocolMessage.J_ER.getIdentifier(), errorCode, errorMessage);
     }
 
-    public String createQuitMessage() {
+    public static String createQuitMessage() {
         return ClientProtocolMessage.QUIT.getIdentifier();
     }
 
-    public String createDataMessage(String chatName, String message) {
+    public static String createDataMessage(String chatName, String message) {
         if (message.length() > MAX_MESSAGE_LENGTH) {
             throw new InvalidProtocolMessageFormatException("Message contains more than " + MAX_MESSAGE_LENGTH + " characters");
         }
         return String.format("%s %s: %s", ClientProtocolMessage.DATA.getIdentifier(), chatName, message);
     }
 
-    public String createImavMessage() {
+    public static String createImavMessage() {
         return ClientProtocolMessage.IMAV.getIdentifier();
     }
 }

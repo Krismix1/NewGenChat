@@ -1,7 +1,8 @@
 package models;
 
-import controllers.ProtocolUtility;
-import views.ClientGUI;
+import controllers.Protocol;
+import views.ColoredConsole;
+import views.ConsoleColors;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -13,14 +14,12 @@ import java.util.*;
  */
 public class ChatRoom {
     private static long ID = 0;
-    private static volatile ProtocolUtility protocolUtility = ProtocolUtility.getInstance();
 
+    // FIXME: 08-Oct-17 ConcurrentModificationException
     private volatile Set<Chatter> chattersList = new HashSet<>();
     private final long id;
 
-    public ChatRoom(/*Chatter c1, Chatter c2*/) {
-//        addClient(c1);
-//        addClient(c2);
+    public ChatRoom() {
         id = ID++;
     }
 
@@ -35,10 +34,10 @@ public class ChatRoom {
                 @Override
                 public void run() {
                     Duration duration = Duration.between(chatter.getLastImavMessage(), LocalDateTime.now());
-                    if (duration.getSeconds() >= ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) {
+                    if (duration.getSeconds() >= Protocol.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) {
                         timer.cancel();
                         removeChatter(chatter);
-                        ClientGUI.getInstance().displayErrorMessage(chatter.getChatName() + " was disconnected for being idle. ");
+                        ColoredConsole.displayMessage(chatter.getChatName() + " was disconnected for being idle. ", ConsoleColors.RED);
                     }
                 }
             };
@@ -51,25 +50,26 @@ public class ChatRoom {
                 while (!chatter.getClient().getConnection().isClosed()) {
                     if (input.hasNextLine()) {
                         String message = input.nextLine();
-                        if (protocolUtility.isQuitRequest(message)) {
+                        ColoredConsole.displayMessage("From " + chatter.getClient().getConnection().getInetAddress().getHostAddress() + " " + message, ConsoleColors.PURPLE);
+                        if (Protocol.isQuitRequest(message)) {
                             // Disconnect the chatter and client from the server
                             timer.cancel();
                             removeChatter(chatter);
                             return;
                         }
-                        if (protocolUtility.isIMAV(message)) {
-                            ClientGUI.getInstance().displayCommand(message);
+                        if (Protocol.isIMAV(message)) {
+                            ColoredConsole.displayMessage(message, ConsoleColors.PURPLE);
                             System.out.println("From " + chatter.getChatName() + " at " + LocalTime.now().toString());
                             chatter.updateLastImav();
                         }
-                        if (protocolUtility.isDATA(message)) {
+                        if (Protocol.isDATA(message)) {
                             sendMessageToAll(message);
                         }
                     }
                 }
             });
             listener.start();
-            timer.scheduleAtFixedRate(disconnectUserTask, (ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) * 1000, (ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) * 1000);
+            timer.scheduleAtFixedRate(disconnectUserTask, (Protocol.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) * 1000, (Protocol.CHATTER_ALIVE_MESSAGE_INTERVAL + 5) * 1000);
         } else {
             throw new RuntimeException("Failed to add chatter");
         }
@@ -100,7 +100,7 @@ public class ChatRoom {
     }
 
     private synchronized void notifyAllChatters() {
-        String message = ProtocolUtility.getInstance().createChattersListMessage(chattersList);
+        String message = Protocol.createChattersListMessage(chattersList);
         sendMessageToAll(message);
     }
 }

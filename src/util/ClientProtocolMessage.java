@@ -1,20 +1,18 @@
-package models;
-
-import controllers.ProtocolUtility;
+package util;
 
 import java.security.InvalidParameterException;
 
 /**
  * Created by Chris on 21-Sep-17.
  */
-public enum ServerProtocolMessage {
-    J_OK("J_OK"),
-    J_ER("J_ER"),
+public enum ClientProtocolMessage {
+    JOIN("JOIN"),
     DATA("DATA"),
-    LIST("LIST");
+    IMAV("IMAV"),
+    QUIT("QUIT");
 
-    ServerProtocolMessage(String keyword){
-        if(keyword.length() == ProtocolUtility.KEYWORDS_LENGTH) {
+    ClientProtocolMessage(String keyword) {
+        if (keyword.length() == 4) {
             identifier = keyword;
         } else throw new InvalidParameterException();
     }

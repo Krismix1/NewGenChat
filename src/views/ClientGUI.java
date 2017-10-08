@@ -3,41 +3,18 @@ package views;
 /**
  * Created by Chris on 26-Sep-17.
  */
-public final class ClientGUI {
+public class ClientGUI {
 
-    private static volatile ClientGUI instance;
-
-    private ClientGUI() {
-        if (instance != null) {
-            throw new IllegalStateException("Singleton " + ClientGUI.class.getName() + " created more than 1 time");
-        }
+    public static void displayErrorMessage(String message) {
+        ColoredConsole.displayMessage(message, ConsoleColors.RED);
     }
 
-    public static synchronized ClientGUI getInstance() {
-        if (instance == null) {
-            instance = new ClientGUI();
-        }
-        return instance;
-    }
-
-    // Make it a singleton
-    public synchronized void displayErrorMessage(String message) {
-        System.out.print(ConsoleColors.RED);
-
-        System.out.print(message);
-
-        System.out.println(ConsoleColors.RESET);
-    }
-
-    public synchronized void displayMessage(String message) {
+    public static void displayMessage(String message) {
         System.out.println(message);
     }
 
-    public synchronized void displayCommand(String message) {
-        System.out.print(ConsoleColors.PURPLE);
-
-        System.out.print(message);
-
-        System.out.println(ConsoleColors.RESET);
+    public static void displayCommand(String message) {
+        ColoredConsole.displayMessage(message, ConsoleColors.PURPLE);
     }
+
 }

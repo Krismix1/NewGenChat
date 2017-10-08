@@ -1,12 +1,14 @@
 package models;
 
-import controllers.ClientHandler;
-import controllers.ProtocolUtility;
+import controllers.Protocol;
+import controllers.Server;
 import views.ClientGUI;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -16,13 +18,24 @@ import java.util.TimerTask;
  */
 public class Client {
 
-    public static void main(String[] args) {
-        Client client = ClientHandler.getInstance().connectToServer();
-        String chatName = ProtocolUtility.getInstance().chooseUsername();
-        Chatter chatter = new Chatter(chatName, client);
-        ClientHandler.getInstance().accessServer(chatter);
-    }
+    private static InetAddress host;
 
+    public static Client connectToServer() {
+        try {
+            host = InetAddress.getByName(Server.SERVER_IP);
+            Socket link = new Socket(host, Server.SERVER_PORT);
+            return new Client(link);
+        } catch (UnknownHostException uhEx) {
+            uhEx.printStackTrace();
+            System.out.println("Host ID not found!");
+            System.exit(1);
+        } catch (IOException ioEx) {
+            ioEx.printStackTrace();
+            System.out.println("Couldn't establish connection");
+            System.exit(1);
+        }
+        return null;
+    }
 
     private volatile Socket connection;
     private volatile PrintWriter connectionOutput;
@@ -54,7 +67,7 @@ public class Client {
             imavTimer.cancel();
         } catch (IOException ioEx) {
             ioEx.printStackTrace();
-            ClientGUI.getInstance().displayMessage("Unable to disconnect!");
+            ClientGUI.displayMessage("Unable to disconnect!");
             System.exit(1);
         }
     }
@@ -64,12 +77,14 @@ public class Client {
             throw new IllegalStateException("Timer was already started");
         }
         timerStarted = true;
-        final int delay = ProtocolUtility.CHATTER_ALIVE_MESSAGE_INTERVAL / 2 * 1000;
+        final int delay = Protocol.CHATTER_ALIVE_MESSAGE_INTERVAL / 2 * 1000;
+        final String imavMessage = Protocol.createImavMessage();
         imavTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                connectionOutput.println(ProtocolUtility.getInstance().createImavMessage());
+                connectionOutput.println(imavMessage);
             }
         }, delay, delay);
     }
+
 }

@@ -17,7 +17,6 @@ class ClientHandlerTest {
 //        assertThrows(InvalidProtocolMessageFormatException.class, ()->{
 //            ClientHandler.getClientFromJoinMessage("JOINcristi, " + SERVER_IP + ":" + SERVER_PORT);
 //        });
-//        // FIXME: 25-Sep-17
 ////        assertThrows(InvalidProtocolMessageFormatException.class, ()->{
 ////            ClientHandler.getClientFromJoinMessage("  ,");
 ////        });
