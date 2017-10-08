@@ -23,7 +23,7 @@ public class ChatRoom {
         id = ID++;
     }
 
-    public boolean addChatter(Chatter chatter) {
+    public synchronized boolean addChatter(Chatter chatter) {
         boolean added = chattersList.add(chatter);
         if (added) {
             notifyAllChatters();
@@ -77,7 +77,7 @@ public class ChatRoom {
     }
 
 
-    public boolean removeChatter(Chatter chatter) {
+    public synchronized boolean removeChatter(Chatter chatter) {
         boolean removed = chattersList.remove(chatter);
         if (removed) {
             chatter.getClient().closeConnection();
